@@ -46,8 +46,8 @@ hadoop_conf.set(
 # Read auth_events From Kafka
 auth_events = create_kafka_read_stream(
     spark=spark,
-    kafka_address="localhost",
-    kafka_port="9092",
+    kafka_address=os.getenv("KAFKA_HOST", "localhost"),
+    kafka_port=os.getenv("KAFKA_PORT", "9092"),
     topic="auth_events",
 
     # Start From The Earlist Position

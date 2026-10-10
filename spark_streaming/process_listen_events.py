@@ -44,8 +44,8 @@ hadoop_conf.set(
 # Gain The Listen_events From Kafka
 listen_events = create_kafka_read_stream(
     spark=spark,
-    kafka_address="localhost",
-    kafka_port="9092",
+    kafka_address=os.getenv("KAFKA_HOST", "localhost"),
+    kafka_port=os.getenv("KAFKA_PORT", "9092"),
     topic="listen_events",
     starting_offset="earliest"
 )

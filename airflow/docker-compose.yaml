@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: postgres:13
+
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+
+  airflow-init:
+    build: .
+
+    depends_on:
+      - postgres
+
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      # Use the same secret key for all Airflow services
+      AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_SECRET_KEY}"
+
+      # Alibaba Cloud OSS settings
+      OSS_ACCESS_KEY_ID: "${OSS_ACCESS_KEY_ID}"
+      OSS_ACCESS_KEY_SECRET: "${OSS_ACCESS_KEY_SECRET}"
+      OSS_ENDPOINT: "${OSS_ENDPOINT}"
+      OSS_BUCKET: "${OSS_BUCKET}"
+
+      # ClickHouse settings
+      CLICKHOUSE_HOST: "${CLICKHOUSE_HOST}"
+      CLICKHOUSE_PORT: "${CLICKHOUSE_PORT}"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD}"
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+      --username ${AIRFLOW_ADMIN_USERNAME}
+      --password ${AIRFLOW_ADMIN_PASSWORD}
+      --firstname Admin
+      --lastname User
+      --role Admin
+      --email ${AIRFLOW_ADMIN_EMAIL}
+      "
+
+
+  airflow-webserver:
+    build: .
+
+    depends_on:
+      - postgres
+      - airflow-init
+
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_SECRET_KEY}"
+
+      # Keep the webserver lightweight for a small VM
+      AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: "300"
+      AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: "300"
+      AIRFLOW__WEBSERVER__WORKERS: "1"
+
+      OSS_ACCESS_KEY_ID: "${OSS_ACCESS_KEY_ID}"
+      OSS_ACCESS_KEY_SECRET: "${OSS_ACCESS_KEY_SECRET}"
+      OSS_ENDPOINT: "${OSS_ENDPOINT}"
+      OSS_BUCKET: "${OSS_BUCKET}"
+
+      CLICKHOUSE_HOST: "${CLICKHOUSE_HOST}"
+      CLICKHOUSE_PORT: "${CLICKHOUSE_PORT}"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD}"
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+    ports:
+      - "8080:8080"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    command: webserver
+
+
+  airflow-scheduler:
+    build: .
+
+    depends_on:
+      - postgres
+      - airflow-init
+
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_SECRET_KEY}"
+
+      OSS_ACCESS_KEY_ID: "${OSS_ACCESS_KEY_ID}"
+      OSS_ACCESS_KEY_SECRET: "${OSS_ACCESS_KEY_SECRET}"
+      OSS_ENDPOINT: "${OSS_ENDPOINT}"
+      OSS_BUCKET: "${OSS_BUCKET}"
+
+      CLICKHOUSE_HOST: "${CLICKHOUSE_HOST}"
+      CLICKHOUSE_PORT: "${CLICKHOUSE_PORT}"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD}"
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    command: scheduler
+
+
+volumes:
+  postgres-db-volume:

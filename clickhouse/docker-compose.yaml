@@ -1,0 +1,25 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: clickhouse
+
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+    environment:
+      CLICKHOUSE_DB: streamify
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD}"
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+
+    volumes:
+      # Persist ClickHouse data
+      - clickhouse-data:/var/lib/clickhouse
+
+      # Run initialization SQL when ClickHouse is created for the first time
+      - ./sql:/docker-entrypoint-initdb.d
+
+
+volumes:
+  clickhouse-data:

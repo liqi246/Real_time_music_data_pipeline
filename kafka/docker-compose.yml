@@ -1,0 +1,93 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.4.0
+    container_name: zookeeper
+
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+    ports:
+      - "2181:2181"
+
+
+  broker:
+    image: confluentinc/cp-server:5.4.0
+    container_name: broker
+
+    depends_on:
+      - zookeeper
+
+    ports:
+      - "9092:9092"
+
+    environment:
+      KAFKA_BROKER_ID: 1
+
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      # Docker containers use broker:29092.
+      # Programs running on the Ubuntu host use localhost:9092.
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        PLAINTEXT:PLAINTEXT,
+        PLAINTEXT_HOST:PLAINTEXT
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://broker:29092,
+        PLAINTEXT_HOST://localhost:9092
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:5.4.0
+    container_name: schema-registry
+
+    depends_on:
+      - broker
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: >
+        PLAINTEXT://broker:29092
+
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:5.4.0
+    container_name: control-center
+
+    depends_on:
+      - broker
+      - schema-registry
+
+    ports:
+      - "9021:9021"
+
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: broker:29092
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+
+
+  kafka-tools:
+    image: confluentinc/cp-kafka:5.4.0
+    container_name: kafka-tools
+
+    depends_on:
+      - broker
+
+    command: >
+      bash -c "while true; do sleep 3600; done"
